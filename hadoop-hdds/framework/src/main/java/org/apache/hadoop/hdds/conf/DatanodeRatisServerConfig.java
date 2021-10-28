@@ -175,6 +175,22 @@ public class DatanodeRatisServerConfig {
     this.clientPoolSize = clientPoolSize;
   }
 
+  @Config(key = "datastream.async.write.thread.pool.size",
+      defaultValue = "16",
+      type = ConfigType.INT,
+      tags = {OZONE, DATANODE, RATIS, DATASTREAM},
+      description = "The number of threads for handling datastream write."
+  )
+  private int asyncWriteThreadPoolPoolSize;
+
+  public int getAsyncWriteThreadPoolPoolSize() {
+    return asyncWriteThreadPoolPoolSize;
+  }
+
+  public void setAsyncWriteThreadPoolPoolSize(int asyncWriteThreadPoolPoolSize) {
+    this.asyncWriteThreadPoolPoolSize = asyncWriteThreadPoolPoolSize;
+  }
+
   @Config(key = "delete.ratis.log.directory",
           defaultValue = "true",
           type = ConfigType.BOOLEAN,
