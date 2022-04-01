@@ -24,7 +24,6 @@ import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
@@ -125,7 +124,6 @@ public class TestNSSummaryTask {
                     .build();
     reconNamespaceSummaryManager =
             reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
-    OzoneManagerRatisUtils.setBucketFSOptimized(true);
   }
 
   @Test
@@ -419,7 +417,7 @@ public class TestNSSummaryTask {
             .setKeyName(key)
             .setFileName(fileName)
             .setReplicationConfig(
-                    new StandaloneReplicationConfig(
+                    StandaloneReplicationConfig.getInstance(
                             HddsProtos.ReplicationFactor.ONE))
             .setObjectID(objectID)
             .setParentObjectID(parentObjectId)
@@ -449,7 +447,7 @@ public class TestNSSummaryTask {
             .setKeyName(key)
             .setFileName(fileName)
             .setReplicationConfig(
-                    new StandaloneReplicationConfig(
+                    StandaloneReplicationConfig.getInstance(
                             HddsProtos.ReplicationFactor.ONE))
             .setObjectID(objectID)
             .setParentObjectID(parentObjectId)

@@ -38,15 +38,14 @@ import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
-import org.apache.hadoop.ozone.om.request.TestOMRequestUtils;
 import org.apache.ozone.test.GenericTestUtils;
-import org.junit.After;
-import org.junit.AfterClass;
+import org.apache.ozone.test.tag.Flaky;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,16 +62,11 @@ import static org.junit.Assert.fail;
 /**
  * Directory deletion service test cases.
  */
+@Timeout(300)
 public class TestDirectoryDeletingServiceWithFSO {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(TestDirectoryDeletingServiceWithFSO.class);
-
-  /**
-   * Set a timeout for each test.
-   */
-  @Rule
-  public Timeout timeout = Timeout.seconds(300);
 
   private static boolean isBucketFSOptimized = true;
   private static boolean enabledFileSystemPaths = true;
@@ -83,7 +77,7 @@ public class TestDirectoryDeletingServiceWithFSO {
   private static String volumeName;
   private static String bucketName;
 
-  @BeforeClass
+  @BeforeAll
   public static void init() throws Exception {
     OzoneConfiguration conf = new OzoneConfiguration();
     conf.setInt(OMConfigKeys.OZONE_DIR_DELETING_SERVICE_INTERVAL, 1);
@@ -93,8 +87,8 @@ public class TestDirectoryDeletingServiceWithFSO {
     conf.setBoolean(OMConfigKeys.OZONE_OM_RATIS_ENABLE_KEY, omRatisEnabled);
     conf.setBoolean(OZONE_ACL_ENABLED, true);
     if (isBucketFSOptimized) {
-      TestOMRequestUtils.configureFSOptimizedPaths(conf,
-          enabledFileSystemPaths, OMConfigKeys.OZONE_OM_METADATA_LAYOUT_PREFIX);
+      conf.set(OMConfigKeys.OZONE_DEFAULT_BUCKET_LAYOUT,
+          BucketLayout.FILE_SYSTEM_OPTIMIZED.name());
     } else {
       conf.setBoolean(OMConfigKeys.OZONE_OM_ENABLE_FILESYSTEM_PATHS,
           enabledFileSystemPaths);
@@ -120,7 +114,7 @@ public class TestDirectoryDeletingServiceWithFSO {
     fs = FileSystem.get(conf);
   }
 
-  @AfterClass
+  @AfterAll
   public static void teardown() {
     if (cluster != null) {
       cluster.shutdown();
@@ -128,7 +122,7 @@ public class TestDirectoryDeletingServiceWithFSO {
     IOUtils.closeQuietly(fs);
   }
 
-  @After
+  @AfterEach
   public void cleanup() {
     try {
       Path root = new Path("/");
@@ -141,6 +135,7 @@ public class TestDirectoryDeletingServiceWithFSO {
     }
   }
 
+  @Flaky("HDDS-6189")
   @Test
   public void testDeleteEmptyDirectory() throws Exception {
     Path root = new Path("/rootDir");
@@ -211,7 +206,7 @@ public class TestDirectoryDeletingServiceWithFSO {
         cluster.getOzoneManager().getMetadataManager().getDeletedDirTable();
     Table<String, OmKeyInfo> keyTable =
         cluster.getOzoneManager().getMetadataManager()
-            .getKeyTable(getBucketLayout());
+            .getKeyTable(getFSOBucketLayout());
     Table<String, OmDirectoryInfo> dirTable =
         cluster.getOzoneManager().getMetadataManager().getDirectoryTable();
 
@@ -258,7 +253,7 @@ public class TestDirectoryDeletingServiceWithFSO {
         cluster.getOzoneManager().getMetadataManager().getDeletedDirTable();
     Table<String, OmKeyInfo> keyTable =
         cluster.getOzoneManager().getMetadataManager()
-            .getKeyTable(getBucketLayout());
+            .getKeyTable(getFSOBucketLayout());
     Table<String, OmDirectoryInfo> dirTable =
         cluster.getOzoneManager().getMetadataManager().getDirectoryTable();
 
@@ -332,7 +327,7 @@ public class TestDirectoryDeletingServiceWithFSO {
         cluster.getOzoneManager().getMetadataManager().getDeletedDirTable();
     Table<String, OmKeyInfo> keyTable =
         cluster.getOzoneManager().getMetadataManager()
-            .getKeyTable(getBucketLayout());
+            .getKeyTable(getFSOBucketLayout());
     Table<String, OmDirectoryInfo> dirTable =
         cluster.getOzoneManager().getMetadataManager().getDirectoryTable();
     Table<String, RepeatedOmKeyInfo> deletedKeyTable =
@@ -404,7 +399,7 @@ public class TestDirectoryDeletingServiceWithFSO {
     Assert.assertEquals(prevDeletedKeyCount + 5, currentDeletedKeyCount);
   }
 
-  public BucketLayout getBucketLayout() {
+  private static BucketLayout getFSOBucketLayout() {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
   }
 }

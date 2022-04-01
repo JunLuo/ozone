@@ -24,12 +24,12 @@ import java.util.List;
 import java.util.UUID;
 
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
+import org.apache.hadoop.ozone.om.request.OMRequestTestUtils;
+import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
 import org.junit.Assert;
 import org.junit.Test;
 
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.ozone.om.request.TestOMRequestUtils;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos
@@ -59,14 +59,37 @@ public class TestS3MultipartUploadCompleteRequest
     String volumeName = UUID.randomUUID().toString();
     String bucketName = UUID.randomUUID().toString();
     String keyName = getKeyName();
+    addVolumeAndBucket(volumeName, bucketName);
 
-    BucketLayout bucketLayout = BucketLayout.DEFAULT;
-    if (OzoneManagerRatisUtils.isBucketFSOptimized()) {
-      bucketLayout = BucketLayout.FILE_SYSTEM_OPTIMIZED;
+    checkValidateAndUpdateCacheSuccess(volumeName, bucketName, keyName);
+    checkDeleteTableCount(volumeName, bucketName, keyName, 0);
+
+    // Do it twice to test overwrite
+    checkValidateAndUpdateCacheSuccess(volumeName, bucketName, keyName);
+    // After overwrite, one entry must be in delete table
+    checkDeleteTableCount(volumeName, bucketName, keyName, 1);
+  }
+
+  public void checkDeleteTableCount(String volumeName,
+      String bucketName, String keyName, int count) throws Exception {
+    String dbOzoneKey = getOzoneDBKey(volumeName, bucketName, keyName);
+    RepeatedOmKeyInfo keysToDelete =
+        omMetadataManager.getDeletedTable().get(dbOzoneKey);
+
+    // deleted key entries count is expected to be 0
+    if (count == 0) {
+      Assert.assertNull(keysToDelete);
+      return;
     }
 
-    TestOMRequestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
-        omMetadataManager, bucketLayout);
+    Assert.assertNotNull(keysToDelete);
+
+    // Count must consider unused parts on commit
+    Assert.assertEquals(count, keysToDelete.getOmKeyInfoList().size());
+  }
+
+  private void checkValidateAndUpdateCacheSuccess(String volumeName,
+      String bucketName, String keyName) throws Exception {
 
     OMRequest initiateMPURequest = doPreExecuteInitiateMPU(volumeName,
         bucketName, keyName);
@@ -117,13 +140,20 @@ public class TestS3MultipartUploadCompleteRequest
     String multipartKey = getMultipartKey(volumeName, bucketName, keyName,
             multipartUploadID);
 
-    Assert.assertNull(
-        omMetadataManager.getOpenKeyTable(getBucketLayout()).get(multipartKey));
+    Assert.assertNull(omMetadataManager
+        .getOpenKeyTable(s3MultipartUploadCompleteRequest.getBucketLayout())
+        .get(multipartKey));
     Assert.assertNull(
         omMetadataManager.getMultipartInfoTable().get(multipartKey));
     Assert.assertNotNull(omMetadataManager
-        .getKeyTable(getBucketLayout(omMetadataManager, volumeName, bucketName))
+        .getKeyTable(s3MultipartUploadCompleteRequest.getBucketLayout())
         .get(getOzoneDBKey(volumeName, bucketName, keyName)));
+  }
+
+  protected void addVolumeAndBucket(String volumeName, String bucketName)
+      throws Exception {
+    OMRequestTestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
+        omMetadataManager, BucketLayout.DEFAULT);
   }
 
   @Test
@@ -132,7 +162,7 @@ public class TestS3MultipartUploadCompleteRequest
     String bucketName = UUID.randomUUID().toString();
     String keyName = getKeyName();
 
-    TestOMRequestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
+    OMRequestTestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
             omMetadataManager);
 
     OMRequest initiateMPURequest = doPreExecuteInitiateMPU(volumeName,
@@ -163,7 +193,7 @@ public class TestS3MultipartUploadCompleteRequest
 
     List<Part> partList = new ArrayList<>();
 
-    String partName= getPartName(volumeName, bucketName, keyName,
+    String partName = getPartName(volumeName, bucketName, keyName,
         multipartUploadID, 23);
 
     partList.add(Part.newBuilder().setPartName(partName).setPartNumber(23)
@@ -217,7 +247,7 @@ public class TestS3MultipartUploadCompleteRequest
     String bucketName = UUID.randomUUID().toString();
     String keyName = UUID.randomUUID().toString();
 
-    TestOMRequestUtils.addVolumeToDB(volumeName, omMetadataManager);
+    OMRequestTestUtils.addVolumeToDB(volumeName, omMetadataManager);
     List<Part> partList = new ArrayList<>();
 
     OMRequest completeMultipartRequest = doPreExecuteCompleteMPU(volumeName,
@@ -242,7 +272,7 @@ public class TestS3MultipartUploadCompleteRequest
     String bucketName = UUID.randomUUID().toString();
     String keyName = UUID.randomUUID().toString();
 
-    TestOMRequestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
+    OMRequestTestUtils.addVolumeAndBucketToDB(volumeName, bucketName,
         omMetadataManager);
     List<Part> partList = new ArrayList<>();
 
@@ -265,7 +295,7 @@ public class TestS3MultipartUploadCompleteRequest
 
   protected void addKeyToTable(String volumeName, String bucketName,
                              String keyName, long clientID) throws Exception {
-    TestOMRequestUtils.addKeyToTable(true, volumeName, bucketName,
+    OMRequestTestUtils.addKeyToTable(true, volumeName, bucketName,
             keyName, clientID, HddsProtos.ReplicationType.RATIS,
             HddsProtos.ReplicationFactor.ONE, omMetadataManager);
   }

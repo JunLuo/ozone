@@ -30,31 +30,28 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRespo
 import javax.annotation.Nonnull;
 import java.io.IOException;
 
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.OPEN_FILE_TABLE;
 
 /**
  * Response for AllocateBlock request - prefix layout.
  */
-@CleanupTableInfo(cleanupTables = {OPEN_FILE_TABLE})
+@CleanupTableInfo(cleanupTables = {OPEN_FILE_TABLE, BUCKET_TABLE})
 public class OMAllocateBlockResponseWithFSO extends OMAllocateBlockResponse {
 
   public OMAllocateBlockResponseWithFSO(@Nonnull OMResponse omResponse,
       @Nonnull OmKeyInfo omKeyInfo, long clientID,
-      @Nonnull OmBucketInfo omBucketInfo) {
-    super(omResponse, omKeyInfo, clientID, omBucketInfo);
-  }
-
-  @Override
-  public BucketLayout getBucketLayout() {
-    return BucketLayout.FILE_SYSTEM_OPTIMIZED;
+      @Nonnull OmBucketInfo omBucketInfo, @Nonnull BucketLayout bucketLayout) {
+    super(omResponse, omKeyInfo, clientID, omBucketInfo, bucketLayout);
   }
 
   /**
    * For when the request is not successful.
    * For a successful request, the other constructor should be used.
    */
-  public OMAllocateBlockResponseWithFSO(@Nonnull OMResponse omResponse) {
-    super(omResponse);
+  public OMAllocateBlockResponseWithFSO(@Nonnull OMResponse omResponse,
+                                        @Nonnull BucketLayout bucketLayout) {
+    super(omResponse, bucketLayout);
   }
 
   @Override
